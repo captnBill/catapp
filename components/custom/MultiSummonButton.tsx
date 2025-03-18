@@ -1,11 +1,13 @@
-import React from 'react';
-import { View, Button, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState } from 'react';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../app/AuthContext';
-import { fetchCatImage } from '../../api';
+import { fetch10CatImages } from '../../api';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../../firebaseConfig';
 
 const MultiSummonButton = ({ onSummon }: { onSummon: (cats: any[]) => void }) => {
   const authContext = useAuth();
+  const [loading, setLoading] = useState(false);
   if (!authContext) {
     return null;
   }
@@ -13,23 +15,31 @@ const MultiSummonButton = ({ onSummon }: { onSummon: (cats: any[]) => void }) =>
 
   const handleSummon = async () => {
     if (user && user.catcoins >= 50) {
-      const cats = [];
-      for (let i = 0; i < 10; i++) {
-        const cat = await fetchCatImage();
-        cats.push(cat);
+      setLoading(true);
+      try {
+        const cats = await fetch10CatImages();
+        const updatedUser = {
+          ...user,
+          catcoins: user.catcoins - 50,
+          collection: [...user.collection, ...cats],
+        };
+        setUser(updatedUser);
+        if (!auth.currentUser) return;
+        const userDocRef = doc(db, 'users', auth.currentUser.uid);
+        await updateDoc(userDocRef, {
+          catcoins: updatedUser.catcoins,
+          collection: updatedUser.collection,
+        });
+        onSummon(cats);
+      } catch (error) {
+        console.error('Error summoning cats:', error);
+      } finally {
+        setLoading(false);
       }
-      const updatedUser = {
-        ...user,
-        catcoins: user.catcoins - 50,
-        collection: [...user.collection, ...cats],
-      };
-      setUser(updatedUser);
-      await AsyncStorage.setItem(`user:${user.username}`, JSON.stringify(updatedUser));
-      onSummon(cats);
     }
   };
 
-  const isDisabled = !user || user.catcoins < 50;
+  const isDisabled = !user || user.catcoins < 50 || loading;
 
   return (
     <TouchableOpacity
@@ -37,7 +47,11 @@ const MultiSummonButton = ({ onSummon }: { onSummon: (cats: any[]) => void }) =>
       onPress={handleSummon}
       disabled={isDisabled}
     >
-      <Text style={isDisabled ? styles.buttonTextDisabled : styles.buttonTextEnabled}>Summon 10 Cats</Text>
+      {loading ? (
+        <ActivityIndicator size="small" color="#fff" />
+      ) : (
+        <Text style={isDisabled ? styles.buttonTextDisabled : styles.buttonTextEnabled}>Summon 10 Cats</Text>
+      )}
     </TouchableOpacity>
   );
 };
@@ -63,4 +77,5 @@ const styles = StyleSheet.create({
     color: 'black',
   },
 });
+
 export default MultiSummonButton;

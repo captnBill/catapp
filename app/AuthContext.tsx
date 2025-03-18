@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, Button, Text, TextInput, StyleSheet, useWindowDimensions } from 'react-native';
 import { useTheme } from '@react-navigation/native';
+import { auth, db } from '../firebaseConfig';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, setDoc, query, where, collection, getDocs } from 'firebase/firestore';
 
 interface Cat {
   url: string;
@@ -11,15 +13,17 @@ interface Cat {
 
 interface User {
   username: string;
+  email: string;
   catcoins: number;
   collection: Cat[];
+  cooldownEnd?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -29,44 +33,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const loadUser = async () => {
-      const storedUser = await AsyncStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (userDoc.exists()) {
+          setUser(userDoc.data() as User);
+        }
+      } else {
+        setUser(null);
       }
-    };
-    loadUser();
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = async (username: string, password: string) => {
-    const storedPassword = await AsyncStorage.getItem(`user:${username}:password`);
-    if (storedPassword === password) {
-      const storedUser = await AsyncStorage.getItem(`user:${username}`);
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+  const login = async (identifier: string, password: string) => {
+    let email = identifier;
+
+    // Check if the identifier is a username
+    if (!identifier.includes('@')) {
+      const q = query(collection(db, 'users'), where('username', '==', identifier));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        email = querySnapshot.docs[0].data().email;
+      } else {
+        throw new Error('Username not found');
       }
-    } else {
-      throw new Error('Invalid credentials');
     }
+
+    await signInWithEmailAndPassword(auth, email, password);
   };
 
-  const register = async (username: string, password: string) => {
-    const existingUser = await AsyncStorage.getItem(`user:${username}`);
-    if (existingUser) {
-      throw new Error('User already exists');
+  const register = async (username: string, email: string, password: string) => {
+    // Check if the username is already in use
+    const q = query(collection(db, 'users'), where('username', '==', username));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      throw new Error('Username already in use');
     }
+
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const newUser: User = {
       username,
+      email,
       catcoins: 0,
       collection: [],
     };
-    await AsyncStorage.setItem(`user:${username}`, JSON.stringify(newUser));
-    await AsyncStorage.setItem(`user:${username}:password`, password);
+    await setDoc(doc(db, 'users', userCredential.user.uid), newUser);
     setUser(newUser);
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem('user');
+    await signOut(auth);
     setUser(null);
   };
 
@@ -100,7 +118,9 @@ export const AuthButton = () => {
 export const AuthForm = ({ type }: { type: 'login' | 'register' }) => {
   const authContext = useAuth();
   const { login, register } = authContext || {};
+  const [identifier, setIdentifier] = useState('');
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { colors } = useTheme();
@@ -109,9 +129,9 @@ export const AuthForm = ({ type }: { type: 'login' | 'register' }) => {
   const handleSubmit = async () => {
     try {
       if (type === 'login') {
-        await login?.(username, password);
+        await login?.(identifier, password);
       } else {
-        await register?.(username, password);
+        await register?.(username, email, password);
       }
     } catch (e) {
       if (e instanceof Error) {
@@ -124,14 +144,36 @@ export const AuthForm = ({ type }: { type: 'login' | 'register' }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <TextInput
-        placeholder="Username"
-        value={username}
-        onChangeText={setUsername}
-        style={[styles.input, { borderColor: colors.border, color: colors.text, width: width * 0.8 }]}
-        placeholderTextColor={colors.text}
-        textAlign="left"
-      />
+      {type === 'register' && (
+        <>
+          <TextInput
+            placeholder="Username"
+            value={username}
+            onChangeText={setUsername}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, width: width * 0.8 }]}
+            placeholderTextColor={colors.text}
+            textAlign="left"
+          />
+          <TextInput
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, width: width * 0.8 }]}
+            placeholderTextColor={colors.text}
+            textAlign="left"
+          />
+        </>
+      )}
+      {type === 'login' && (
+        <TextInput
+          placeholder="Username or Email"
+          value={identifier}
+          onChangeText={setIdentifier}
+          style={[styles.input, { borderColor: colors.border, color: colors.text, width: width * 0.8 }]}
+          placeholderTextColor={colors.text}
+          textAlign="left"
+        />
+      )}
       <TextInput
         placeholder="Password"
         value={password}
@@ -165,5 +207,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export default to avoid the missing default export warning
 export default AuthProvider;

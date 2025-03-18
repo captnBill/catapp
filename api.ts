@@ -16,3 +16,18 @@ export const fetchCatImage = async () => {
     throw error;
   }
 };
+
+export const fetch10CatImages = async () => {
+  try {
+    const response = await fetch(`${API_URL}?limit=10`, {
+      headers: {
+        'x-api-key': CAT_API_KEY,
+      },
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching 10 cat images:', error);
+    throw error;
+  }
+};

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../app/AuthContext';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../../firebaseConfig';
 
 const CatCoinsButton = () => {
   const authContext = useAuth();
@@ -13,39 +14,55 @@ const CatCoinsButton = () => {
   useEffect(() => {
     const loadCooldown = async () => {
       if (user) {
-        const cooldownEnd = await AsyncStorage.getItem(`cooldownEnd:${user.username}`);
-        if (cooldownEnd) {
-          const remainingTime = new Date(cooldownEnd).getTime() - new Date().getTime();
-          if (remainingTime > 0) {
-            setCooldown(true);
-            setRemainingTime(remainingTime);
-            const interval = setInterval(() => {
-              const newRemainingTime = new Date(cooldownEnd).getTime() - new Date().getTime();
-              if (newRemainingTime <= 0) {
-                clearInterval(interval);
-                setCooldown(false);
-                setRemainingTime(0);
-              } else {
-                setRemainingTime(newRemainingTime);
-              }
-            }, 1000);
-            return () => clearInterval(interval);
+        if (!auth.currentUser) return;
+        const userDocRef = doc(db, 'users', auth.currentUser.uid); // Use username as the document ID
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const cooldownEnd = userDoc.data().cooldownEnd;
+          if (cooldownEnd) {
+            const remainingTime = new Date(cooldownEnd).getTime() - new Date().getTime();
+            if (remainingTime > 0) {
+              setCooldown(true);
+              setRemainingTime(remainingTime);
+              const interval = setInterval(() => {
+                const newRemainingTime = new Date(cooldownEnd).getTime() - new Date().getTime();
+                if (newRemainingTime <= 0) {
+                  clearInterval(interval);
+                  setCooldown(false);
+                  setRemainingTime(0);
+                } else {
+                  setRemainingTime(newRemainingTime);
+                }
+              }, 1000);
+              return () => clearInterval(interval);
+            }
           }
         }
       }
     };
+
     loadCooldown();
   }, [user]);
 
-  const handlePress = async () => {
-    if (user && setUser && !cooldown) {
+ const handlePress = async () => {
+  if (user && setUser && !cooldown) {
+    try {
       const updatedUser = { ...user, catcoins: user.catcoins + 10 };
       setUser(updatedUser);
-      await AsyncStorage.setItem(`user:${user.username}`, JSON.stringify(updatedUser));
-      setCooldown(true);
+
+      // Set a cooldown of 60 seconds
       const cooldownEnd = new Date(new Date().getTime() + 60000).toISOString();
-      await AsyncStorage.setItem(`cooldownEnd:${user.username}`, cooldownEnd);
+
+      if (!auth.currentUser) return;
+        const userDocRef = doc(db, 'users', auth.currentUser.uid);  // Use username as the document ID
+      await updateDoc(userDocRef, {
+        catcoins: updatedUser.catcoins,
+        cooldownEnd: cooldownEnd,
+      });
+
+      setCooldown(true);
       setRemainingTime(60000);
+
       const interval = setInterval(() => {
         const newRemainingTime = new Date(cooldownEnd).getTime() - new Date().getTime();
         if (newRemainingTime <= 0) {
@@ -56,24 +73,22 @@ const CatCoinsButton = () => {
           setRemainingTime(newRemainingTime);
         }
       }, 1000);
+    } catch (error) {
+      console.error("Error updating catcoins or cooldown:", error);
     }
-  };
-
-  const getButtonStyle = () => {
-    if (!cooldown) {
-      return styles.buttonEnabled;
-    }
-    const percentage = remainingTime / 60000;
-    const backgroundColor = `rgba(255, 165, 0, ${1 - percentage})`;
-    return [styles.buttonDisabled, { backgroundColor }];
-  };
+  }
+};
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={[styles.button, getButtonStyle()]} onPress={handlePress} disabled={cooldown}>
-        <Text style={cooldown ? styles.buttonTextDisabled : styles.buttonTextEnabled}>Get 10 Catcoins</Text>
+      <TouchableOpacity
+        style={[styles.button, cooldown ? styles.buttonDisabled : styles.buttonEnabled]}
+        onPress={handlePress}
+        disabled={cooldown}
+      >
+        <Text style={styles.buttonText}>{cooldown ? 'Cooldown active...' : 'Get 10 Catcoins'}</Text>
       </TouchableOpacity>
-      {cooldown && <Text style={styles.cooldownText}>Cooldown active, please wait...</Text>}
+      {cooldown && <Text style={styles.cooldownText}>Wait {Math.ceil(remainingTime / 1000)} seconds</Text>}
     </View>
   );
 };
@@ -94,14 +109,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'orange',
   },
   buttonDisabled: {
-    backgroundColor: 'darkgrey',
+    backgroundColor: 'gray',
   },
-  buttonTextEnabled: {
+  buttonText: {
     color: 'white',
-    fontWeight: 'bold',
-  },
-  buttonTextDisabled: {
-    color: 'black',
     fontWeight: 'bold',
   },
   cooldownText: {

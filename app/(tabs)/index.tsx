@@ -22,7 +22,9 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome to Catapp!</ThemedText>
+        <ThemedText type="title" darkColor='hsl(45, 100%, 50%)' lightColor='hsl(25, 100%, 26%)'>
+          Welcome to Catapp!
+        </ThemedText>
         <HelloWave />
       </ThemedView>
       <ThemedView style={styles.stepContainer}>

@@ -1,4 +1,3 @@
-// filepath: c:\Users\noegr\Documents\Cours\E5\xmobil\app\catapp2folder\catapp\components\custom\SummonDisplay.tsx
 import React, { useEffect } from 'react';
 import { View, Image, StyleSheet, Animated } from 'react-native';
 

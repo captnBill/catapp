@@ -1,17 +1,25 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Modal, Button } from 'react-native';
+import { View, FlatList, Modal, Image, StyleSheet } from 'react-native';
 import { useAuth } from '../../app/AuthContext';
+import GridItem from '../../components/custom/GridItem';
+import ModalButtons from '../../components/custom/ModalButtons';
 import * as MediaLibrary from 'expo-media-library';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebaseConfig';
 
 const CollectionScreen = () => {
   const { user, setUser } = useAuth() || {};
   const [selectedCat, setSelectedCat] = useState<any>(null);
 
-  const handleRemoveCat = (cat: any) => {
+  const handleRemoveCat = async (cat: any) => {
     if (user && setUser) {
       const updatedCollection = user.collection.filter((c) => c.url !== cat.url);
       const updatedUser = { ...user, catcoins: user.catcoins + 5, collection: updatedCollection };
       setUser(updatedUser);
+      await updateDoc(doc(db, 'users', user.username), {
+        catcoins: updatedUser.catcoins,
+        collection: updatedUser.collection,
+      });
       setSelectedCat(null);
     }
   };
@@ -27,9 +35,7 @@ const CollectionScreen = () => {
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity onPress={() => setSelectedCat(item)} style={styles.gridItem}>
-      <Image source={{ uri: item.url }} style={styles.image} />
-    </TouchableOpacity>
+    <GridItem item={item} onPress={() => setSelectedCat(item)} />
   );
 
   return (
@@ -46,9 +52,12 @@ const CollectionScreen = () => {
           {selectedCat && (
             <>
               <Image source={{ uri: selectedCat.url }} style={styles.fullImage} />
-              <Button title="Remove Cat" onPress={() => handleRemoveCat(selectedCat)} />
-              <Button title="Save Image" onPress={() => handleSaveImage(selectedCat)} />
-              <Button title="Close" onPress={() => setSelectedCat(null)} />
+              <ModalButtons
+                onRemove={() => handleRemoveCat(selectedCat)}
+                onSave={() => handleSaveImage(selectedCat)}
+                onClose={() => setSelectedCat(null)}
+                cat={selectedCat}
+              />
             </>
           )}
         </View>
@@ -64,16 +73,6 @@ const styles = StyleSheet.create({
   },
   grid: {
     justifyContent: 'center',
-  },
-  gridItem: {
-    flex: 1,
-    margin: 5,
-    aspectRatio: 1,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 10,
   },
   modalContainer: {
     flex: 1,

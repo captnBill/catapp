@@ -1,24 +1,48 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import { useAuth } from '../../app/AuthContext';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../../firebaseConfig';
 
-const ModalButtons = ({ onRemove, onSave, onClose }: { onRemove: () => void; onSave: () => void; onClose: () => void }) => (
-  <View style={styles.buttonContainer}>
-    <View style={styles.actionButtons}>
-      <TouchableOpacity style={[styles.button, styles.removeButton]} onPress={onRemove}>
-        <Text style={styles.buttonText}>Remove Cat</Text>
-        <Text style={styles.buttonSmallText}>Refunds 5 Catcoins</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={onSave}>
-        <Text style={styles.buttonText}>Save Image</Text>
-        <Text style={styles.buttonSmallText}>to Camera Roll</Text>
+const ModalButtons = ({ onRemove, onSave, onClose, cat }: { onRemove: (cat: { url: string }) => void; onSave: () => void; onClose: () => void; cat: { url: string } }) => {
+  const authContext = useAuth();
+  const user = authContext?.user;
+  const setUser = authContext?.setUser;
+
+  const handleRemove = async (cat: { url: string }) => {
+    if (user && setUser) {
+      const updatedCollection = user.collection.filter((c) => c.url !== cat.url);
+      const updatedUser = { ...user, catcoins: user.catcoins + 5, collection: updatedCollection };
+      setUser(updatedUser);
+      if (!auth.currentUser) return;
+      const userDocRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userDocRef, {
+        catcoins: updatedUser.catcoins,
+        collection: updatedUser.collection,
+      });
+      onRemove(cat);
+    }
+  };
+
+  return (
+    <View style={styles.buttonContainer}>
+      <View style={styles.actionButtons}>
+        <TouchableOpacity style={[styles.button, styles.removeButton]} onPress={() => handleRemove(cat)}>
+          <Text style={styles.buttonText}>Remove Cat</Text>
+          <Text style={styles.buttonSmallText}>Refunds 5 Catcoins</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={onSave}>
+          <Text style={styles.buttonText}>Save Image</Text>
+          <Text style={styles.buttonSmallText}>to Camera Roll</Text>
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <FontAwesome name="times" size={24} color="white" />
       </TouchableOpacity>
     </View>
-    <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-      <FontAwesome name="times" size={24} color="white" />
-    </TouchableOpacity>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   buttonContainer: {

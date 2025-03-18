@@ -4,6 +4,7 @@ import { useAuth } from '../../app/AuthContext';
 import GridItem from '../../components/custom/GridItem';
 import ModalButtons from '../../components/custom/ModalButtons';
 import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
 
 const CollectionScreen = () => {
   const authContext = useAuth();
@@ -25,8 +26,26 @@ const CollectionScreen = () => {
   const handleSaveImage = async (cat: any) => {
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status === 'granted') {
-      await MediaLibrary.createAssetAsync(cat.url);
-      alert('Image saved to camera roll!');
+      try {
+        const fileUri = FileSystem.documentDirectory + cat.url.split('/').pop();
+        const downloadResumable = FileSystem.createDownloadResumable(
+          cat.url,
+          fileUri
+        );
+        const downloadResult = await downloadResumable.downloadAsync();
+        if (downloadResult && downloadResult.uri) {
+          await MediaLibrary.createAssetAsync(downloadResult.uri);
+          alert('Image saved to camera roll!');
+        } else {
+          alert('Failed to download image.');
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          alert('Failed to save image: ' + error.message);
+        } else {
+          alert('Failed to save image.');
+        }
+      }
     } else {
       alert('Permission to access camera roll is required!');
     }
@@ -51,6 +70,7 @@ const CollectionScreen = () => {
             <>
               <Image source={{ uri: selectedCat.url }} style={styles.fullImage} />
               <ModalButtons
+                cat={selectedCat}
                 onRemove={() => handleRemoveCat(selectedCat)}
                 onSave={() => handleSaveImage(selectedCat)}
                 onClose={() => setSelectedCat(null)}

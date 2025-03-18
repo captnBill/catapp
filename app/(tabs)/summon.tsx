@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { View, ScrollView, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import SingleSummonButton from '../../components/custom/SingleSummonButton';
 import MultiSummonButton from '../../components/custom/MultiSummonButton';
 import SummonDisplay from '../../components/custom/SummonDisplay';
@@ -11,6 +11,7 @@ const { width } = Dimensions.get('window');
 
 export default function SummonScreen() {
   const [summonedCats, setSummonedCats] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const authContext = useAuth();
   const user = authContext?.user;
 
@@ -24,7 +25,7 @@ export default function SummonScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-        <CatShrineTitle />
+      <CatShrineTitle />
       <ThemedText style={styles.explanation}>
         Add cats to your collection!{'\n\n'}
         A single summon costs 5 Catcoins.{'\n\n'}
@@ -35,6 +36,7 @@ export default function SummonScreen() {
         <SingleSummonButton onSummon={handleSingleSummon} />
         <MultiSummonButton onSummon={handleMultiSummon} />
       </View>
+      {loading && <ActivityIndicator size="large" color="#0000ff" />}
       <SummonDisplay cats={summonedCats} />
     </ScrollView>
   );
@@ -52,7 +54,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 24,
     fontWeight: 'bold',
-
   },
   explanation: {
     textAlign: 'center',
