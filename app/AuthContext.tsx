@@ -11,13 +11,14 @@ interface Cat {
   height: number;
 }
 
-interface User {
+export interface User {
   username: string;
   email: string;
   catcoins: number;
   collection: Cat[];
   cooldownEnd?: string;
 }
+
 
 interface AuthContextType {
   user: User | null;
@@ -98,19 +99,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthButton = () => {
-  const authContext = useAuth();
-  const { user, logout } = authContext || {};
-
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      {user ? (
-        <>
-          <Text>Welcome, {user.username}</Text>
-          <Button title="Logout" onPress={logout} />
-        </>
-      ) : (
-        <Text>Please log in to continue</Text>
-      )}
+
     </View>
   );
 };

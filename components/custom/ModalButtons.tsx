@@ -5,8 +5,14 @@ import { useAuth } from '../../app/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebaseConfig';
 
-const ModalButtons = ({ onRemove, onSave, onClose, cat }: { onRemove: (cat: { url: string }) => void; onSave: () => void; onClose: () => void; cat: { url: string } }) => {
-  const authContext = useAuth();
+const ModalButtons = ({ onRemove, onSave, onClose, onSendCat, cat }: 
+  { onRemove: (cat: { url: string }) => void; 
+    onSave: () => void; 
+    onClose: () => void; 
+    onSendCat: () => void; 
+    cat: { url: string } }) => {
+
+  const authContext = useAuth(); 
   const user = authContext?.user;
   const setUser = authContext?.setUser;
 
@@ -35,6 +41,12 @@ const ModalButtons = ({ onRemove, onSave, onClose, cat }: { onRemove: (cat: { ur
         <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={onSave}>
           <Text style={styles.buttonText}>Save Image</Text>
           <Text style={styles.buttonSmallText}>to Camera Roll</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.actionButtons}>
+        <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={onSendCat}>
+          <Text style={styles.buttonText}>Send this cat to another user</Text>
+          <Text style={styles.buttonSmallText}>Say goodbye to this cat and earn 8 catcoins</Text>
         </TouchableOpacity>
       </View>
       <TouchableOpacity style={styles.closeButton} onPress={onClose}>

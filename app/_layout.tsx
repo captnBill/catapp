@@ -37,7 +37,8 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <AuthWrapper>
           <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ title:'Back', headerShown: false }} />
+            <Stack.Screen name="SendCatScreen" options={{ title: 'Send Cat' }} />
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="auto" />

@@ -5,14 +5,35 @@ import GridItem from '../../components/custom/GridItem';
 import ModalButtons from '../../components/custom/ModalButtons';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
+import { useRouter } from 'expo-router';
+import { Dimensions } from 'react-native'; // Add this import
+
 
 const CollectionScreen = () => {
+  const router = useRouter();
   const authContext = useAuth();
   if (!authContext) {
     return null; // or handle the null case appropriately
   }
   const { user, setUser } = authContext;
   const [selectedCat, setSelectedCat] = useState<any>(null);
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
+
+  const calculateImageSize = (width: number, height: number) => {
+    const maxWidth = screenWidth * 0.9; // 90% of screen width
+    const maxHeight = screenHeight * 0.6; // 60% of screen height
+    const aspectRatio = width / height;
+
+    if (width > maxWidth || height > maxHeight) {
+      if (width / maxWidth > height / maxHeight) {
+        return { width: maxWidth, height: maxWidth / aspectRatio };
+      } else {
+        return { width: maxHeight * aspectRatio, height: maxHeight };
+      }
+    }
+    return { width, height };
+  };
 
   const handleRemoveCat = (cat: any) => {
     if (user && setUser) {
@@ -51,6 +72,13 @@ const CollectionScreen = () => {
     }
   };
 
+  const handleSendCat = (cat: any) => {
+    // redirect to SendCatScreen with the selected cat in route params
+    router.push({ pathname: '../SendCatScreen', params: cat });
+
+    setSelectedCat(null);
+  };
+
   const renderItem = ({ item }: { item: any }) => (
     <GridItem item={item} onPress={() => setSelectedCat(item)} />
   );
@@ -68,12 +96,17 @@ const CollectionScreen = () => {
         <View style={styles.modalContainer}>
           {selectedCat && (
             <>
-              <Image source={{ uri: selectedCat.url }} style={styles.fullImage} />
+              <Image source={{ uri: selectedCat.url }} 
+              style={[
+                styles.fullImage,
+                calculateImageSize(selectedCat.width, selectedCat.height),
+              ]} />
               <ModalButtons
                 cat={selectedCat}
                 onRemove={() => handleRemoveCat(selectedCat)}
                 onSave={() => handleSaveImage(selectedCat)}
                 onClose={() => setSelectedCat(null)}
+                onSendCat={() => handleSendCat(selectedCat)}
               />
             </>
           )}
@@ -98,8 +131,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
   },
   fullImage: {
-    width: '80%',
-    height: '50%',
+
     marginBottom: 20,
   },
 });
