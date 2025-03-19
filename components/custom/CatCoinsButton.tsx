@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAuth } from '../../app/AuthContext';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db, auth } from '../../firebaseConfig';
+import { db, auth } from '../../hooks/firebaseConfig';
 
 const CatCoinsButton = () => {
   const authContext = useAuth();

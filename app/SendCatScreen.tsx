@@ -6,7 +6,7 @@ import { useTheme } from '@react-navigation/native';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db, auth } from '../firebaseConfig';
+import { db, auth } from '../hooks/firebaseConfig';
 import { useRouter } from 'expo-router';
 
 

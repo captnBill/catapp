@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../app/AuthContext';
-import { fetchCatImage } from '../../api';
+import { fetchCatImage } from '../../hooks/api';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db, auth } from '../../firebaseConfig';
+import { db, auth } from '../../hooks/firebaseConfig';
 
 const SingleSummonButton = ({ onSummon }: { onSummon: (cat: any) => void }) => {
   const authContext = useAuth();

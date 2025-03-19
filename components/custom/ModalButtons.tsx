@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useAuth } from '../../app/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db, auth } from '../../firebaseConfig';
+import { db, auth } from '../../hooks/firebaseConfig';
 
 const ModalButtons = ({ onRemove, onSave, onClose, onSendCat, cat }: 
   { onRemove: (cat: { url: string }) => void; 
